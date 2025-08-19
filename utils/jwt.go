@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type JWTClaims struct {
@@ -13,7 +14,9 @@ type JWTClaims struct {
 }
 
 
-func GetSignedKey(id uint) (string, error) {
+func GetSignedKey(id uint) (string, string, error) {
+	jti := uuid.New()
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, JWTClaims{
 		Subject: id,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -21,7 +24,12 @@ func GetSignedKey(id uint) (string, error) {
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(5 * time.Minute)),
 			Issuer: "auth.justfossa.lol",
 			Audience: []string{"auth-api"},
+			ID: jti.String(),
 		},
 	})
-	return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+
+	t, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+
+
+	return jti.String(), t, err
 }

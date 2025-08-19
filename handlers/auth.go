@@ -58,7 +58,7 @@ func Register(c *fiber.Ctx) error {
 		})
 	}
 ;
-	jwt, err := utils.GetSignedKey(user.ID)
+	jti, jwt, err := utils.GetSignedKey(user.ID)
 
 	if err != nil {
 		return c.JSON(utils.Response{
@@ -72,6 +72,7 @@ func Register(c *fiber.Ctx) error {
 	refreshToken, hashedToken := utils.GenerateRefreshToken()
 
 	session := models.Session{
+		JTI: jti,
 		UserID: user.ID,
 		RefreshToken: hashedToken,
 		Revoked: false,
