@@ -23,5 +23,5 @@ type Session struct {
 	User User `gorm:"foreignKey:UserID;references:ID"`
 	RefreshToken string `json:"refresh_token"`
 	Revoked bool `gorm:"default:false" json:"revoked"`
-	IssuedAt time.Time `json:"iat"`
+	IssuedAt time.Time `gorm:"autoCreateTime" json:"iat"`
 }
