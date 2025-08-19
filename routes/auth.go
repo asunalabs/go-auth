@@ -11,4 +11,6 @@ import (
 func AuthRoutes(router fiber.Router) {
 	handlers.SetupAuth()
 	router.Post("/register", handlers.Register)
+	router.Post("/login", handlers.Login)
+	router.Get("/refresh", handlers.RefreshToken)
 }

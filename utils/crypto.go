@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"log"
 
@@ -30,7 +31,14 @@ func HashTokenSHA256(token string) string {
 }
 
 func GenerateRefreshToken() (token string, hash string) {
-	t := rand.Text()
+	bytes := make([]byte, 64)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		return "", ""
+	}
+
+	t := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(bytes)
+
 	return t, HashTokenSHA256(t)
 }
 

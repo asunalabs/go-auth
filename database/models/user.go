@@ -18,10 +18,12 @@ type User struct {
 }
 
 type Session struct {
-	JTI string `gorm:"primaryKey" json:"jti"`
+	ID uint `gorm:"primaryKey;autoIncrement" json:"id"`
+	JTI string `gorm:"unique" json:"jti"`
 	UserID uint `json:"uid"`
 	User User `gorm:"foreignKey:UserID;references:ID"`
 	RefreshToken string `json:"refresh_token"`
 	Revoked bool `gorm:"default:false" json:"revoked"`
 	IssuedAt time.Time `gorm:"autoCreateTime" json:"iat"`
+	ExpiresAt time.Time `json:"exp"`
 }
