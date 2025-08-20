@@ -5,6 +5,7 @@ import (
 	"api/database/models"
 	"api/routes"
 	"api/utils"
+	"errors"
 	"fmt"
 	"log"
 
@@ -28,6 +29,31 @@ func main() {
 
 	app := fiber.New(fiber.Config{
 		Prefork: false,
+		ErrorHandler: func(ctx *fiber.Ctx, err error) error {
+			code := fiber.StatusInternalServerError
+
+			var e *fiber.Error
+			if errors.As(err, &e) {
+				code = e.Code
+			}
+
+			err = ctx.Status(code).JSON(utils.Response{
+				Success: false,
+				Code: uint(code),
+				Message: e.Error(),
+				Data: nil,
+			})
+
+			if err != nil {
+				return ctx.Status(fiber.StatusInternalServerError).JSON(utils.Response{
+					Success: false,
+					Code: 500,
+					Message: "Internal server error",
+					Data: nil,
+				})
+			}
+			return nil
+		},
 	})
 
 	app.Use("/metrics", monitor.New())
