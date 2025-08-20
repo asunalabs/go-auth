@@ -19,7 +19,7 @@ func GetMe(c *fiber.Ctx) error {
 	db := database.GetInstance()
 
 	var user models.User
-	if err := db.First(&user, claims.Subject).Error; err != nil {
+	if err := db.Preload("Sessions").First(&user, claims.Subject).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(utils.Response{
 			Success: false,
 			Code:    404,

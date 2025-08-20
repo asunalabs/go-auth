@@ -6,6 +6,7 @@ import (
 	"api/routes"
 	"api/utils"
 	"fmt"
+	"log"
 
 	"os"
 
@@ -83,7 +84,6 @@ func main() {
 		},
 	}))
 
-	// Register protected user routes under /user (e.g., /api/v1/user/@me)
 	userGroup := protected.Group("/user")
 	routes.UserRoutes(userGroup)
 
@@ -91,5 +91,9 @@ func main() {
 		return c.SendString("Hello world")
 	})
 
-	app.Listen(fmt.Sprintf(":%s", PORT))
+	err := app.Listen(fmt.Sprintf(":%s", PORT))
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }
