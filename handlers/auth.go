@@ -242,6 +242,41 @@ func RefreshToken(c *fiber.Ctx) error {
 	})
 }
 
+func RevokeToken(c *fiber.Ctx) error {
+	refreshToken := c.Cookies("refresh_token")
+	if refreshToken == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(utils.Response{
+			Success: false,
+			Code: 400,
+			Message: "Missing refresh_token",
+			Data: nil,
+		})
+	}
+
+	var session models.Session
+	err := db.Where(&models.Session{RefreshToken: utils.HashTokenSHA256(refreshToken)}).First(&session).Error
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(utils.Response{
+			Success: false,
+			Code: 404,
+			Message: "Invalid token",
+			Data: nil,
+		})
+	}
+
+	session.Revoked = true
+	db.Save(&session)
+
+	c.ClearCookie("refresh_token")
+
+	return c.Status(fiber.StatusOK).JSON(utils.Response{
+		Success: true,
+		Code: 200,
+		Message: "Token revoked",
+		Data: nil,
+	})
+}
+
 func SetupAuth() {
 	db = database.GetInstance()
 }

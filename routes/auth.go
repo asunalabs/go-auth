@@ -13,4 +13,5 @@ func AuthRoutes(router fiber.Router) {
 	router.Post("/register", handlers.Register)
 	router.Post("/login", handlers.Login)
 	router.Get("/refresh", handlers.RefreshToken)
+	router.Get("/revoke", handlers.RevokeToken)
 }
