@@ -26,3 +26,12 @@ type Session struct {
 	IssuedAt     time.Time `gorm:"autoCreateTime" json:"iat"`
 	ExpiresAt    time.Time `json:"exp"`
 }
+
+type PasswordReset struct {
+	ID        uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	Email     string    `gorm:"index" json:"email"`
+	Token     string    `gorm:"unique" json:"-"`
+	Used      bool      `gorm:"default:false" json:"used"`
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+}

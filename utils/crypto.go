@@ -44,3 +44,17 @@ func GenerateRefreshToken() (token string, hash string) {
 func CompareTokens(token string, hash string) bool {
 	return HashTokenSHA256(token) == hash
 }
+
+// GenerateSecureToken generates a cryptographically secure random token
+// for password resets. Returns the token and its SHA256 hash.
+func GenerateSecureToken() (token string, hash string) {
+	bytes := make([]byte, 32) // 256 bits
+	_, err := rand.Read(bytes)
+	if err != nil {
+		return "", ""
+	}
+
+	token = base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(bytes)
+	hash = HashTokenSHA256(token)
+	return token, hash
+}

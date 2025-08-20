@@ -30,7 +30,7 @@ func Init() {
 	}
 	sqlDB.SetConnMaxLifetime(30 * time.Minute)
 
-	db.AutoMigrate(&models.User{}, &models.Session{})
+	db.AutoMigrate(&models.User{}, &models.Session{}, &models.PasswordReset{})
 
 	Database = db
 }
