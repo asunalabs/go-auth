@@ -20,12 +20,7 @@ func GetMe(c *fiber.Ctx) error {
 
 	var user models.User
 	if err := db.Preload("Sessions").First(&user, claims.Subject).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(utils.Response{
-			Success: false,
-			Code:    404,
-			Message: "User not found",
-			Data:    nil,
-		})
+		return fiber.NewError(404, "User not found")
 	}
 
 	// Sanitize sensitive fields

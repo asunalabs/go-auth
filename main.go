@@ -3,9 +3,9 @@ package main
 import (
 	"api/database"
 	"api/database/models"
+	"api/middleware"
 	"api/routes"
 	"api/utils"
-	"errors"
 	"fmt"
 	"log"
 
@@ -28,33 +28,12 @@ func main() {
 	db := database.GetInstance()
 
 	app := fiber.New(fiber.Config{
-		Prefork: false,
-		ErrorHandler: func(ctx *fiber.Ctx, err error) error {
-			code := fiber.StatusInternalServerError
-
-			var e *fiber.Error
-			if errors.As(err, &e) {
-				code = e.Code
-			}
-
-			err = ctx.Status(code).JSON(utils.Response{
-				Success: false,
-				Code: uint(code),
-				Message: e.Error(),
-				Data: nil,
-			})
-
-			if err != nil {
-				return ctx.Status(fiber.StatusInternalServerError).JSON(utils.Response{
-					Success: false,
-					Code: 500,
-					Message: "Internal server error",
-					Data: nil,
-				})
-			}
-			return nil
-		},
+		Prefork:      false,
+		ErrorHandler: middleware.NewErrorHandler(log.Default()),
 	})
+
+	// Attach request id middleware early so the error handler can include it.
+	app.Use(middleware.RequestID())
 
 	app.Use("/metrics", monitor.New())
 

@@ -30,23 +30,15 @@ func Register(c *fiber.Ctx) error {
 	err := c.BodyParser(&body)
 
 	if err != nil {
-		return c.JSON(utils.Response{
-			Success: false,
-			Code:    400,
-			Message: "Malformed request",
-			Data:    nil,
-		})
+		return fiber.NewError(400, "Malformed request")
 	}
 
 	hash, err := utils.HashPassword(body.Password)
 
 	if err != nil {
-		return c.JSON(utils.Response{
-			Success: false,
-			Code:    500,
-			Message: "Internal server error",
-			Data:    err.Error(),
-		})
+		// return the original error so the global error handler will log it
+		// and return a generic 500 to the client
+		return err
 	}
 
 	user := models.User{
@@ -57,23 +49,13 @@ func Register(c *fiber.Ctx) error {
 	err = db.Create(&user).Error
 
 	if err != nil {
-		return c.JSON(utils.Response{
-			Success: false,
-			Code:    400,
-			Message: "User with this email already exists",
-			Data:    nil,
-		})
+		return fiber.NewError(400, "User with this email already exists")
 	}
 
 	jti, jwt, err := utils.GetSignedKey(user.ID)
 
 	if err != nil {
-		return c.JSON(utils.Response{
-			Success: false,
-			Code:    500,
-			Message: "Internal server error",
-			Data:    err.Error(),
-		})
+		return err
 	}
 
 	refreshToken, hashedToken := utils.GenerateRefreshToken()
@@ -125,34 +107,24 @@ func Login(c *fiber.Ctx) error {
 	var body LoginProps
 	err := c.BodyParser(&body)
 	if err != nil {
-		return c.JSON(utils.Response{
-			Success: false,
-			Code:    400,
-			Message: "Malformed request",
-			Data:    nil,
-		})
+		return fiber.NewError(400, "Malformed request")
 	}
 
 	var user models.User
 	err = db.Where(&models.User{Email: body.Email}).First(&user).Error
 	if err != nil {
-		return c.JSON(utils.Response{
-			Success: false,
-			Code:    404,
-			Message: "User not found",
-			Data:    nil,
-		})
+		return fiber.NewError(404, "User not found")
+	}
+
+	// Verify the password against the stored hash
+	if !utils.ComparePassword(body.Password, user.Password) {
+		return fiber.NewError(401, "Invalid credentials")
 	}
 
 	jti, jwt, err := utils.GetSignedKey(user.ID)
 
 	if err != nil {
-		return c.JSON(utils.Response{
-			Success: false,
-			Code:    500,
-			Message: "Internal server error",
-			Data:    err.Error(),
-		})
+		return err
 	}
 
 	refreshToken, hashedToken := utils.GenerateRefreshToken()
@@ -188,12 +160,7 @@ func RefreshToken(c *fiber.Ctx) error {
 	refreshToken := c.Cookies("refresh_token")
 
 	if refreshToken == "" {
-		return c.JSON(utils.Response{
-			Success: false,
-			Code:    400,
-			Message: "Missing refresh_token",
-			Data:    nil,
-		})
+		return fiber.NewError(400, "Missing refresh_token")
 	}
 
 	hash := utils.HashTokenSHA256(refreshToken)
@@ -203,44 +170,24 @@ func RefreshToken(c *fiber.Ctx) error {
 	err := db.Where(&models.Session{RefreshToken: hash}).First(&session).Error
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(utils.Response{
-			Success: false,
-			Code:    401,
-			Message: "Unauthorized",
-			Data:    nil,
-		})
+		return fiber.NewError(401, "Unauthorized")
 	}
 
 	if session.Revoked {
-		return c.Status(fiber.StatusUnauthorized).JSON(utils.Response{
-			Success: false,
-			Code:    401,
-			Message: "Unauthorized: Refresh token revoked",
-			Data:    nil,
-		})
+		return fiber.NewError(401, "Unauthorized: Refresh token revoked")
 	}
 
 	if session.ExpiresAt.Before(time.Now()) {
 		session.Revoked = true
 		db.Save(&session)
 
-		return c.Status(fiber.StatusUnauthorized).JSON(utils.Response{
-			Success: false,
-			Code:    401,
-			Message: "Unauthorized: Refresh token expired",
-			Data:    nil,
-		})
+		return fiber.NewError(401, "Unauthorized: Refresh token expired")
 	}
 
 	jti, jwt, err := utils.GetSignedKey(session.UserID)
 
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.Response{
-			Success: false,
-			Code:    500,
-			Message: "Internal server error",
-			Data:    nil,
-		})
+		return err
 	}
 
 	session.JTI = jti
@@ -259,23 +206,13 @@ func RefreshToken(c *fiber.Ctx) error {
 func RevokeToken(c *fiber.Ctx) error {
 	refreshToken := c.Cookies("refresh_token")
 	if refreshToken == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(utils.Response{
-			Success: false,
-			Code:    400,
-			Message: "Missing refresh_token",
-			Data:    nil,
-		})
+		return fiber.NewError(400, "Missing refresh_token")
 	}
 
 	var session models.Session
 	err := db.Where(&models.Session{RefreshToken: utils.HashTokenSHA256(refreshToken)}).First(&session).Error
 	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(utils.Response{
-			Success: false,
-			Code:    404,
-			Message: "Invalid token",
-			Data:    nil,
-		})
+		return fiber.NewError(404, "Invalid token")
 	}
 
 	session.Revoked = true
