@@ -4,6 +4,7 @@ import (
 	"api/database"
 	"api/database/models"
 	"api/utils"
+	"context"
 	"os"
 	"time"
 
@@ -14,12 +15,12 @@ import (
 var db *gorm.DB
 
 type RegisterProps struct {
-	Email string
+	Email    string
 	Password string
 }
 
 type LoginProps struct {
-	Email string
+	Email    string
 	Password string
 }
 
@@ -31,9 +32,9 @@ func Register(c *fiber.Ctx) error {
 	if err != nil {
 		return c.JSON(utils.Response{
 			Success: false,
-			Code: 400,
+			Code:    400,
 			Message: "Malformed request",
-			Data: nil,
+			Data:    nil,
 		})
 	}
 
@@ -42,14 +43,14 @@ func Register(c *fiber.Ctx) error {
 	if err != nil {
 		return c.JSON(utils.Response{
 			Success: false,
-			Code: 500,
+			Code:    500,
 			Message: "Internal server error",
-			Data: err.Error(),
+			Data:    err.Error(),
 		})
-	}	
+	}
 
 	user := models.User{
-		Email: body.Email,
+		Email:    body.Email,
 		Password: hash,
 	}
 
@@ -58,47 +59,61 @@ func Register(c *fiber.Ctx) error {
 	if err != nil {
 		return c.JSON(utils.Response{
 			Success: false,
-			Code: 400,
+			Code:    400,
 			Message: "User with this email already exists",
-			Data: nil,
+			Data:    nil,
 		})
 	}
-;
+
 	jti, jwt, err := utils.GetSignedKey(user.ID)
 
 	if err != nil {
 		return c.JSON(utils.Response{
 			Success: false,
-			Code: 500,
+			Code:    500,
 			Message: "Internal server error",
-			Data: err.Error(),
+			Data:    err.Error(),
 		})
 	}
 
 	refreshToken, hashedToken := utils.GenerateRefreshToken()
 
 	session := models.Session{
-		JTI: jti,
-		UserID: user.ID,
+		JTI:          jti,
+		UserID:       user.ID,
 		RefreshToken: hashedToken,
-		Revoked: false,
-		ExpiresAt: time.Now().Add(30 * 24 * time.Hour),
+		Revoked:      false,
+		ExpiresAt:    time.Now().Add(30 * 24 * time.Hour),
 	}
 	db.Create(&session)
 
 	c.Cookie(&fiber.Cookie{
-		Name: "refresh_token",
-		Value: refreshToken,
+		Name:     "refresh_token",
+		Value:    refreshToken,
 		HTTPOnly: true,
 		SameSite: "Lax",
-		Secure: os.Getenv("ENV") == "production",
+		Secure:   os.Getenv("ENV") == "production",
 	})
+
+	// Send a welcome email asynchronously. Do not block registration on email delivery.
+	go func(email string) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		client := utils.NewSMTPClient()
+		subject := "Welcome to Asuna Labs"
+		body := "Welcome! Your account has been created successfully.\n\nThanks for joining."
+		if err := client.Send(ctx, []string{email}, subject, body); err != nil {
+			// Best-effort logging via standard error output; keep registration successful.
+			// In an enterprise setup, replace with structured logger/metrics.
+			_ = err
+		}
+	}(user.Email)
 
 	return c.JSON(utils.Response{
 		Success: true,
-		Code: 200,
+		Code:    200,
 		Message: "Registered Successfully",
-		Data: struct{
+		Data: struct {
 			Token string `json:"token"`
 		}{
 			Token: jwt,
@@ -112,9 +127,9 @@ func Login(c *fiber.Ctx) error {
 	if err != nil {
 		return c.JSON(utils.Response{
 			Success: false,
-			Code: 400,
+			Code:    400,
 			Message: "Malformed request",
-			Data: nil,
+			Data:    nil,
 		})
 	}
 
@@ -123,9 +138,9 @@ func Login(c *fiber.Ctx) error {
 	if err != nil {
 		return c.JSON(utils.Response{
 			Success: false,
-			Code: 404,
+			Code:    404,
 			Message: "User not found",
-			Data: nil,
+			Data:    nil,
 		})
 	}
 
@@ -134,37 +149,37 @@ func Login(c *fiber.Ctx) error {
 	if err != nil {
 		return c.JSON(utils.Response{
 			Success: false,
-			Code: 500,
+			Code:    500,
 			Message: "Internal server error",
-			Data: err.Error(),
+			Data:    err.Error(),
 		})
 	}
 
 	refreshToken, hashedToken := utils.GenerateRefreshToken()
 
 	session := models.Session{
-		JTI: jti,
-		UserID: user.ID,
+		JTI:          jti,
+		UserID:       user.ID,
 		RefreshToken: hashedToken,
-		Revoked: false,
-		ExpiresAt: time.Now().Add(30 * 24 * time.Hour),
+		Revoked:      false,
+		ExpiresAt:    time.Now().Add(30 * 24 * time.Hour),
 	}
 	db.Create(&session)
 
 	c.Cookie(&fiber.Cookie{
-		Name: "refresh_token",
-		Value: refreshToken,
+		Name:     "refresh_token",
+		Value:    refreshToken,
 		HTTPOnly: true,
 		SameSite: "Lax",
-		Secure: os.Getenv("ENV") == "production",
+		Secure:   os.Getenv("ENV") == "production",
 	})
 
 	return c.JSON(utils.Response{
 		Success: true,
-		Code: 200,
+		Code:    200,
 		Message: "Signed in successfully",
 		Data: fiber.Map{
-			"token":jwt,
+			"token": jwt,
 		},
 	})
 }
@@ -175,9 +190,9 @@ func RefreshToken(c *fiber.Ctx) error {
 	if refreshToken == "" {
 		return c.JSON(utils.Response{
 			Success: false,
-			Code: 400,
+			Code:    400,
 			Message: "Missing refresh_token",
-			Data: nil,
+			Data:    nil,
 		})
 	}
 
@@ -190,18 +205,18 @@ func RefreshToken(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.Response{
 			Success: false,
-			Code: 401,
+			Code:    401,
 			Message: "Unauthorized",
-			Data: nil,
+			Data:    nil,
 		})
 	}
 
 	if session.Revoked {
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.Response{
 			Success: false,
-			Code: 401,
+			Code:    401,
 			Message: "Unauthorized: Refresh token revoked",
-			Data: nil,
+			Data:    nil,
 		})
 	}
 
@@ -211,9 +226,9 @@ func RefreshToken(c *fiber.Ctx) error {
 
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.Response{
 			Success: false,
-			Code: 401,
+			Code:    401,
 			Message: "Unauthorized: Refresh token expired",
-			Data: nil,
+			Data:    nil,
 		})
 	}
 
@@ -222,22 +237,21 @@ func RefreshToken(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.Response{
 			Success: false,
-			Code: 500,
+			Code:    500,
 			Message: "Internal server error",
-			Data: nil,
+			Data:    nil,
 		})
 	}
 
 	session.JTI = jti
 	db.Save(&session)
 
-
 	return c.JSON(utils.Response{
 		Success: true,
-		Code: 200,
+		Code:    200,
 		Message: "Success",
 		Data: fiber.Map{
-			"token" : jwt,
+			"token": jwt,
 		},
 	})
 }
@@ -247,9 +261,9 @@ func RevokeToken(c *fiber.Ctx) error {
 	if refreshToken == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(utils.Response{
 			Success: false,
-			Code: 400,
+			Code:    400,
 			Message: "Missing refresh_token",
-			Data: nil,
+			Data:    nil,
 		})
 	}
 
@@ -258,9 +272,9 @@ func RevokeToken(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(utils.Response{
 			Success: false,
-			Code: 404,
+			Code:    404,
 			Message: "Invalid token",
-			Data: nil,
+			Data:    nil,
 		})
 	}
 
@@ -271,9 +285,9 @@ func RevokeToken(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(utils.Response{
 		Success: true,
-		Code: 200,
+		Code:    200,
 		Message: "Token revoked",
-		Data: nil,
+		Data:    nil,
 	})
 }
 

@@ -16,7 +16,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-
 func main() {
 	godotenv.Load()
 
@@ -29,25 +28,28 @@ func main() {
 	app := fiber.New(fiber.Config{
 		Prefork: false,
 	})
-	
 
 	app.Use("/metrics", monitor.New())
 
 	api := app.Group("/api/v1")
 
+	// Public auth routes (register/login/refresh) should not require JWTs.
 	auth := api.Group("/auth")
 	routes.AuthRoutes(auth)
 
-	app.Use(jwtware.New(jwtware.Config{
+	// Protected routes: apply JWT middleware only to this subgroup. Any routes
+	// that require authentication should be registered under `protected`.
+	protected := api.Group("/")
+	protected.Use(jwtware.New(jwtware.Config{
 		ContextKey: "user",
-		Claims: &utils.JWTClaims{},
+		Claims:     &utils.JWTClaims{},
 		SigningKey: jwtware.SigningKey{JWTAlg: "HS256", Key: []byte(os.Getenv("JWT_SECRET"))},
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			return c.JSON(utils.Response{
 				Success: false,
-				Code: 401,
+				Code:    401,
 				Message: "Unauthorized",
-				Data: err.Error(),
+				Data:    err.Error(),
 			})
 		},
 		SuccessHandler: func(c *fiber.Ctx) error {
@@ -55,33 +57,35 @@ func main() {
 			claims := token.Claims.(*utils.JWTClaims)
 			jti := claims.ID
 
-			session := models.Session{
-				JTI: jti,
-			}
-
-			err := db.Find(&session).Error
+			// Look up session by JTI. Use Where + First to query by the JTI column.
+			var session models.Session
+			err := db.Where(&models.Session{JTI: jti}).First(&session).Error
 
 			if err != nil {
 				return c.JSON(utils.Response{
 					Success: false,
-					Code: 401,
+					Code:    401,
 					Message: "Unauthorized",
-					Data: nil,
+					Data:    nil,
 				})
 			}
 
 			if session.Revoked {
 				return c.JSON(utils.Response{
 					Success: false,
-					Code: 401,
+					Code:    401,
 					Message: "Unauthorized",
-					Data: nil,
+					Data:    nil,
 				})
 			}
 
 			return c.Next()
 		},
 	}))
+
+	// Register protected user routes under /user (e.g., /api/v1/user/@me)
+	userGroup := protected.Group("/user")
+	routes.UserRoutes(userGroup)
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hello world")
