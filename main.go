@@ -24,6 +24,7 @@ func main() {
 	PORT := os.Getenv("PORT")
 
 	database.Init()
+	utils.InitOAuth() // Initialize OAuth configurations
 
 	db := database.GetInstance()
 

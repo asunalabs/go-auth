@@ -30,7 +30,10 @@ func Init() {
 	}
 	sqlDB.SetConnMaxLifetime(30 * time.Minute)
 
-	db.AutoMigrate(&models.User{}, &models.Session{}, &models.PasswordReset{})
+	db.AutoMigrate(&models.User{}, &models.Session{}, &models.PasswordReset{}, &models.OAuthAccount{}, &models.OAuthState{})
+
+	// Add composite unique index for OAuth accounts (user_id + provider)
+	db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_oauth_accounts_user_provider ON oauth_accounts(user_id, provider) WHERE deleted_at IS NULL")
 
 	Database = db
 }
