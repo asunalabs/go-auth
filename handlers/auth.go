@@ -15,8 +15,9 @@ import (
 var db *gorm.DB
 
 type RegisterProps struct {
-	Email    string
-	Password string
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type LoginProps struct {
@@ -33,6 +34,25 @@ func Register(c *fiber.Ctx) error {
 		return fiber.NewError(400, "Malformed request")
 	}
 
+	// Validate required fields
+	if body.Username == "" {
+		return fiber.NewError(400, "Username is required")
+	}
+	if body.Email == "" {
+		return fiber.NewError(400, "Email is required")
+	}
+	if body.Password == "" {
+		return fiber.NewError(400, "Password is required")
+	}
+
+	// Basic username validation
+	if len(body.Username) < 3 {
+		return fiber.NewError(400, "Username must be at least 3 characters long")
+	}
+	if len(body.Username) > 255 {
+		return fiber.NewError(400, "Username must be less than 255 characters")
+	}
+
 	hash, err := utils.HashPassword(body.Password)
 
 	if err != nil {
@@ -42,6 +62,7 @@ func Register(c *fiber.Ctx) error {
 	}
 
 	user := models.User{
+		Username: body.Username,
 		Email:    body.Email,
 		Password: hash,
 	}
@@ -49,7 +70,7 @@ func Register(c *fiber.Ctx) error {
 	err = db.Create(&user).Error
 
 	if err != nil {
-		return fiber.NewError(400, "User with this email already exists")
+		return fiber.NewError(400, "User with this email or username already exists")
 	}
 
 	jti, jwt, err := utils.GetSignedKey(user.ID)

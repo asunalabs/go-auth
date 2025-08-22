@@ -8,6 +8,7 @@ import (
 
 type User struct {
 	ID        uint           `gorm:"primaryKey;autoIncrement" json:"id"`
+	Username  string         `gorm:"uniqueIndex;size:255" json:"username"`
 	Email     string         `gorm:"unique" json:"email"`
 	Password  string         `json:"-"`
 	Sessions  []Session      `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
