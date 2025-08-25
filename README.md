@@ -428,12 +428,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 - **Documentation**: Check this README and inline code comments
-- **Issues**: [GitHub Issues](https://github.com/yourusername/go-auth/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/go-auth/discussions)
+- **Issues**: [GitHub Issues](https://github.com/asunalabs/go-auth/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/asunalabs/go-auth/discussions)
 
 ## 👨‍💻 Authors
 
-- **Your Name** - [@yourusername](https://github.com/yourusername)
+- **Asuna Labs** - [@asunalabs](https://github.com/asunalabs)
 
 ## 🙏 Acknowledgments
 
