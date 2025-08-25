@@ -1,2 +1,4 @@
 .env
 tmp/*
+api
+api.exe
