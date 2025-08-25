@@ -71,7 +71,7 @@ Edit `.env` with your configuration:
 
 ```bash
 # Database
-DB_URI=postgresql://user:password@localhost:5432/postgres?sslmode=disable
+DB_URI=postgresql://user:password@localhost:5432/go_auth?sslmode=disable
 
 # JWT Secret (generate a secure random string)
 JWT_SECRET=your_super_secure_jwt_secret_here
